@@ -9,6 +9,6 @@ export default defineConfig({
     vuetify({ autoImport: true }),
   ],
   server: {
-    allowedHosts: ['6150-2804-1530-675-3f00-416c-16fe-b57a-75e7.ngrok-free.app']
+    allowedHosts: ['a9af-2804-1530-675-3f00-b840-abeb-7c21-72f1.ngrok-free.app']
   }
 })

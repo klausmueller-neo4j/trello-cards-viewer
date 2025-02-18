@@ -1,30 +1,28 @@
 <template>
   <v-app>
     <v-container>
+      <v-row>
+        <v-col cols="12" md="5" offset-md="3">
+          <v-select 
+            v-model="selectedMember" 
+            :items="members" 
+            item-title="fullName" 
+            return-object
+            label="Select Member" @update:modelValue="onMemberChange" outlined dense>
+          </v-select>
+        </v-col>
+      </v-row>
+
       <v-card class="pa-2" outlined>
-        <v-card-title>Trello Card Tracking</v-card-title>
+        <v-card-title class="title-large">Trello Card Tracking</v-card-title>
         <v-card-text>
-          <v-progress-linear
-            v-if="loading"
-            indeterminate
-            color="primary"
-            class="mb-3"
-          ></v-progress-linear>
+          <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-3"></v-progress-linear>
           <v-alert v-if="error" type="error" outlined>
             {{ error }}
           </v-alert>
           <v-row v-if="sortedActions.length" dense>
-            <v-col
-              v-for="(action, index) in sortedActions"
-              :key="index"
-              cols="12"
-              md="6"
-            >
-              <v-card
-                outlined
-                class="equal-cards card-title-wrap"
-                :class="getCardClass(action.data.card.id)"
-              >
+            <v-col v-for="(action, index) in sortedActions" :key="index" cols="12" md="6">
+              <v-card outlined class="equal-cards card-title-wrap" :class="getCardStatus(action.data.card.id)">
                 <v-card-title class="card-title-wrap">
                   <div v-if="cardDetailsMap[action.data.card.id]">
                     <strong>{{ cardDetailsMap[action.data.card.id].name }}</strong>
@@ -82,15 +80,16 @@ export default {
     // Get credentials from environment variables.
     const API_KEY = import.meta.env.VITE_TRELLO_API_KEY
     const TOKEN = import.meta.env.VITE_TRELLO_TOKEN
-    const member = 'frankyao18'
+    const boardId = import.meta.env.VITE_TRELLO_BOARD_ID
 
-    // Reactive state
     const actions = ref([])
     const loading = ref(true)
     const error = ref(null)
     const expanded = ref([])
-    // Object to store card details keyed by card id.
     const cardDetailsMap = ref({})
+    const members = ref([])
+    const selectedMember = ref('')
+
 
     // Helper function: group an array into chunks.
     function groupArray(array, chunkSize) {
@@ -133,8 +132,9 @@ export default {
     // Fetch actions and then fetch card details.
     async function fetchActionsAndCardDetails() {
       try {
+        console.log(selectedMember.value)
         // Fetch actions (card creation events)
-        const actionsUrl = `https://api.trello.com/1/members/${member}/actions?filter=createCard,copyCard&key=${API_KEY}&token=${TOKEN}`
+        const actionsUrl = `https://api.trello.com/1/members/${selectedMember.value.username}/actions?filter=createCard,copyCard&key=${API_KEY}&token=${TOKEN}`
         const response = await fetch(actionsUrl)
         if (!response.ok) {
           throw new Error('Error fetching actions')
@@ -157,7 +157,7 @@ export default {
       }
     }
 
-    // Computed property: sort actions by dateLastActivity (most recent first).
+    // Computed property: sort actions by dateLastActivity
     const sortedActions = computed(() => {
       return actions.value.slice().sort((a, b) => {
         const cardA = cardDetailsMap.value[a.data.card.id]
@@ -181,7 +181,7 @@ export default {
     }
 
     // Determine the CSS class based on card closed status.
-    const getCardClass = cardId => {
+    const getCardStatus = cardId => {
       const card = cardDetailsMap.value[cardId]
       if (card) {
         return card.closed ? 'closed-card' : 'open-card'
@@ -189,8 +189,31 @@ export default {
       return ''
     }
 
-    onMounted(() => {
+    // Fetch members for the board.
+    async function fetchMembers() {
+      try {
+        const membersUrl = `https://api.trello.com/1/boards/${boardId}/members?key=${API_KEY}&token=${TOKEN}`
+        const response = await fetch(membersUrl)
+        if (!response.ok) {
+          throw new Error('Error fetching members')
+        }
+        const membersData = await response.json()
+        members.value = membersData
+        if (membersData.length > 0) {
+          selectedMember.value = membersData[0]
+          fetchActionsAndCardDetails()
+        }
+      } catch (err) {
+        error.value = err.message || 'Unknown error'
+      }
+    }
+
+    function onMemberChange() {
       fetchActionsAndCardDetails()
+    }
+
+    onMounted(() => {
+      fetchMembers()
     })
 
     return {
@@ -202,7 +225,10 @@ export default {
       formatDate,
       toggle,
       cardDetailsMap,
-      getCardClass
+      getCardStatus,
+      onMemberChange,
+      members,
+      selectedMember
     }
   }
 }
@@ -232,7 +258,7 @@ export default {
 
 /* Set a minimum height for cards */
 .equal-cards {
-  min-height: 200px;
+  min-height: 190px;
 }
 
 /* Background color based on closed status */
@@ -242,5 +268,12 @@ export default {
 
 .open-card {
   background-color: lightcoral !important;
+}
+
+.title-large {
+  font-size: 2rem !important;
+  font-weight: bold !important;
+  text-align: center !important;
+  padding: 0.5rem 0 !important;
 }
 </style>

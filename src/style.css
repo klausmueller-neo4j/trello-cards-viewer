@@ -1,63 +1,86 @@
+/* Global Variables & Defaults */
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+  /* Typography */
+  --font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --line-height: 1.5;
+  --font-weight: 400;
 
+  /* Colors for Dark Mode (default) */
+  --color-text: rgba(255, 255, 255, 0.87);
+  --color-bg: #ffffff;
+  --color-link: #646cff;
+  --color-link-hover: #535bf2;
+  --color-button-bg: #1a1a1a;
+
+  /* Global Styles */
+  font-family: var(--font-family);
+  line-height: var(--line-height);
+  font-weight: var(--font-weight);
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  color: var(--color-text);
+  background-color: var(--color-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Anchor Styling */
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--color-link);
   text-decoration: inherit;
 }
+
 a:hover {
-  color: #535bf2;
+  color: var(--color-link-hover);
 }
 
+/* Global Body Styling */
 body {
   margin: 0;
   display: flex;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   min-width: 320px;
   min-height: 100vh;
 }
 
+/* Headings */
 h1 {
-  font-size: 3.2em;
+  font-size: 3.2rem;
   line-height: 1.1;
+  margin: 0;
 }
 
+/* Buttons */
 button {
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
-  font-size: 1em;
+  font-size: 1rem;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--color-button-bg);
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
-  border-color: #646cff;
+  border-color: var(--color-link);
 }
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+/* Card Component */
 .card {
   padding: 2em;
 }
 
+/* App Container */
 #app {
   max-width: 1280px;
   margin: 0 auto;
@@ -65,14 +88,24 @@ button:focus-visible {
   text-align: center;
 }
 
+/* Light Mode Overrides */
 @media (prefers-color-scheme: light) {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    --color-text: #213547;
+    --color-bg: #ffffff;
+    --color-link: #646cff;
+    --color-link-hover: #747bff;
   }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+  }
+
   a:hover {
-    color: #747bff;
+    color: var(--color-link-hover);
   }
+
   button {
     background-color: #f9f9f9;
   }
