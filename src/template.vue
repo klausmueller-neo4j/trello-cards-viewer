@@ -1,31 +1,43 @@
 <template>
   <v-app>
     <v-container>
-      
+      <!-- Member selection row -->
       <v-row>
-        <!--Member filtering-->
         <v-col cols="12" md="5" offset-md="3">
-          <v-select v-model="selectedMember" :items="members" item-title="fullName" return-object label="Select Member"
-            @update:modelValue="onMemberChange" outlined dense>
+          <v-select 
+            v-model="selectedMember" 
+            :items="members" 
+            item-text="fullName"
+            return-object
+            label="Select Member"
+            @change="onMemberChange"
+            outlined dense>
           </v-select>
         </v-col>
       </v-row>
-      <!-- Cards filtering based on title and description -->
+
+      <!-- Search input row -->
       <v-row>
         <v-col cols="12" md="5" offset-md="3">
           <v-text-field
             v-model="searchQuery"
-            label="Search"
+            label="Search by title or description"
             outlined
             dense
           ></v-text-field>
         </v-col>
       </v-row>
 
+      <!-- Main Card Section -->
       <v-card class="pa-2" outlined>
         <v-card-title class="title-large">Trello Card Tracking</v-card-title>
         <v-card-text>
-          <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-3"></v-progress-linear>
+          <v-progress-linear 
+            v-if="loading" 
+            indeterminate 
+            color="primary" 
+            class="mb-3">
+          </v-progress-linear>
           <v-alert v-if="error" type="error" outlined>
             {{ error }}
           </v-alert>
@@ -34,7 +46,10 @@
               v-for="(action, index) in filteredActions" 
               :key="index" 
               cols="12" md="6">
-              <v-card outlined class="equal-cards card-title-wrap" :class="getCardStatus(action.data.card.id)">
+              <v-card 
+                outlined 
+                class="equal-cards card-title-wrap" 
+                :class="getCardStatus(action.data.card.id)">
                 <v-card-title class="card-title-wrap">
                   <div v-if="cardDetailsMap[action.data.card.id]">
                     <strong>{{ cardDetailsMap[action.data.card.id].name }}</strong>
@@ -51,7 +66,6 @@
                       {{ action.data.board.name }}
                     </div>
                     <div v-if="cardDetailsMap[action.data.card.id]">
-                      <!-- More detailed info from the batch data -->
                       <div>
                         <strong>Description:</strong>
                         {{ cardDetailsMap[action.data.card.id].desc }}
@@ -62,7 +76,9 @@
                       </div>
                     </div>
                     <div>
-                      <a :href="'https://trello.com/c/' + action.data.card.shortLink" target="_blank">
+                      <a 
+                        :href="'https://trello.com/c/' + action.data.card.shortLink" 
+                        target="_blank">
                         Trello Link
                       </a>
                     </div>
@@ -89,7 +105,7 @@ import { ref, onMounted, computed } from 'vue'
 export default {
   name: 'App',
   setup() {
-    // Get credentials from environment variables.
+    // Get credentials and board ID from environment variables.
     const API_KEY = import.meta.env.VITE_TRELLO_API_KEY
     const TOKEN = import.meta.env.VITE_TRELLO_TOKEN
     const boardId = import.meta.env.VITE_TRELLO_BOARD_ID
@@ -100,27 +116,12 @@ export default {
     const expanded = ref([])
     const cardDetailsMap = ref({})
     const members = ref([])
-    const selectedMember = ref('')
+    const selectedMember = ref({})
+
+    // New reactive variable for search query.
     const searchQuery = ref('')
 
-    // Filter Trellos by title or description
-    const filteredActions = computed(() => {
-      if (!searchQuery.value) {
-        return sortedActions.value
-      }
-      const query = searchQuery.value.toLowerCase()
-      return sortedActions.value.filter(action => {
-        const card = cardDetailsMap.value[action.data.card.id]
-        if (!card) return false
-        // Check if the card's name or description includes the search query.
-        const name = card.name ? card.name.toLowerCase() : ''
-        const desc = card.desc ? card.desc.toLowerCase() : ''
-        return name.includes(query) || desc.includes(query)
-      })
-    })
-
-
-    // Helper function: group an array into chunks.
+    // Helper: group an array into chunks.
     function groupArray(array, chunkSize) {
       const groups = []
       for (let i = 0; i < array.length; i += chunkSize) {
@@ -129,24 +130,21 @@ export default {
       return groups
     }
 
-    // Batch fetch card details using Trello's batch API.
+    // Batch fetch card details.
     async function fetchCardDetails(cardIds) {
       const groups = groupArray(cardIds, 10)
       const detailsMap = {}
-
       for (const group of groups) {
         const endpoints = group.map(id => `/cards/${id}`)
         const urlsParam = endpoints.join(',')
-        const batchUrl = `https://api.trello.com/1/batch?urls=${encodeURIComponent(
-          urlsParam
-        )}&key=${API_KEY}&token=${TOKEN}`
+        const batchUrl = `https://api.trello.com/1/batch?urls=${encodeURIComponent(urlsParam)}&key=${API_KEY}&token=${TOKEN}`
+        console.log(batchUrl)
         const response = await fetch(batchUrl)
         if (!response.ok) {
           console.error('Error fetching card details for group', group)
           continue
         }
         const batchData = await response.json()
-        // Process each result from the batch response.
         batchData.forEach(result => {
           const cardData = result['200'] || result
           if (cardData && cardData.id) {
@@ -160,7 +158,7 @@ export default {
     // Fetch actions and then fetch card details.
     async function fetchActionsAndCardDetails() {
       try {
-        // Fetch actions (card creation events)
+        // Use selectedMember.value.username
         const actionsUrl = `https://api.trello.com/1/members/${selectedMember.value.username}/actions?filter=createCard,copyCard&key=${API_KEY}&token=${TOKEN}`
         const response = await fetch(actionsUrl)
         if (!response.ok) {
@@ -168,14 +166,10 @@ export default {
         }
         const actionsData = await response.json()
         actions.value = actionsData
-
         expanded.value = Array(actionsData.length).fill(false)
-
         const cardIds = [
           ...new Set(actionsData.map(action => action.data.card.id))
         ]
-
-        // Batch-fetch card details.
         cardDetailsMap.value = await fetchCardDetails(cardIds)
       } catch (err) {
         error.value = err.message || 'Unknown error'
@@ -184,7 +178,7 @@ export default {
       }
     }
 
-    // Computed property: sort actions by dateLastActivity
+    // Computed property: sort actions by dateLastActivity.
     const sortedActions = computed(() => {
       return actions.value.slice().sort((a, b) => {
         const cardA = cardDetailsMap.value[a.data.card.id]
@@ -193,6 +187,22 @@ export default {
           return new Date(cardB.dateLastActivity) - new Date(cardA.dateLastActivity)
         }
         return 0
+      })
+    })
+
+    // New computed property: filter sortedActions based on searchQuery.
+    const filteredActions = computed(() => {
+      if (!searchQuery.value) {
+        return sortedActions.value
+      }
+      const query = searchQuery.value.toLowerCase()
+      return sortedActions.value.filter(action => {
+        const card = cardDetailsMap.value[action.data.card.id]
+        if (!card) return false
+        // Check if the card's name or description includes the search query.
+        const name = card.name ? card.name.toLowerCase() : ''
+        const desc = card.desc ? card.desc.toLowerCase() : ''
+        return name.includes(query) || desc.includes(query)
       })
     })
 
@@ -226,6 +236,7 @@ export default {
         }
         const membersData = await response.json()
         members.value = membersData
+        console.log('Members:', members.value)
         if (membersData.length > 0) {
           selectedMember.value = membersData[0]
           fetchActionsAndCardDetails()
@@ -235,17 +246,16 @@ export default {
       }
     }
 
-    let fetchTimeout = null;
+    // Delay API calls until after the user has finalized their selection.
+    let fetchTimeout = null
     function onMemberChange() {
       if (fetchTimeout) {
-        clearTimeout(fetchTimeout);
+        clearTimeout(fetchTimeout)
       }
       fetchTimeout = setTimeout(() => {
-        fetchActionsAndCardDetails();
-      }, 300);
+        fetchActionsAndCardDetails()
+      }, 300)
     }
-
-    
 
     onMounted(() => {
       fetchMembers()
@@ -254,6 +264,7 @@ export default {
     return {
       actions,
       sortedActions,
+      filteredActions,
       loading,
       error,
       expanded,
@@ -264,7 +275,6 @@ export default {
       onMemberChange,
       members,
       selectedMember,
-      filteredActions,
       searchQuery
     }
   }
