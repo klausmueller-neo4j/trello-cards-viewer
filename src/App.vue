@@ -4,13 +4,22 @@
       <v-card class="pa-2" outlined>
         <v-card-title>Trello Card Tracking</v-card-title>
         <v-card-text>
-          <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-3"></v-progress-linear>
+          <v-progress-linear
+            v-if="loading"
+            indeterminate
+            color="primary"
+            class="mb-3"
+          ></v-progress-linear>
           <v-alert v-if="error" type="error" outlined>
             {{ error }}
           </v-alert>
-
-          <v-row v-if="actions.length" dense>
-            <v-col v-for="(action, index) in actions" :key="index" cols="12" md="6">
+          <v-row v-if="sortedActions.length" dense>
+            <v-col
+              v-for="(action, index) in sortedActions"
+              :key="index"
+              cols="12"
+              md="6"
+            >
               <v-card
                 outlined
                 class="equal-cards card-title-wrap"
@@ -32,10 +41,14 @@
                       {{ action.data.board.name }}
                     </div>
                     <div v-if="cardDetailsMap[action.data.card.id]">
-                      <!-- You can display more detailed info from the batch data -->
+                      <!-- More detailed info from the batch data -->
                       <div>
                         <strong>Description:</strong>
                         {{ cardDetailsMap[action.data.card.id].desc }}
+                      </div>
+                      <div>
+                        <strong>Date Last Activity:</strong>
+                        {{ formatDate(cardDetailsMap[action.data.card.id].dateLastActivity) }}
                       </div>
                     </div>
                     <div>
@@ -53,7 +66,6 @@
               </v-card>
             </v-col>
           </v-row>
-
           <div v-else-if="!loading">No actions found.</div>
         </v-card-text>
       </v-card>
@@ -62,7 +74,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 
 export default {
   name: 'App',
@@ -89,7 +101,7 @@ export default {
       return groups
     }
 
-    // Fetch card details in batches.
+    // Batch fetch card details using Trello's batch API.
     async function fetchCardDetails(cardIds) {
       const groups = groupArray(cardIds, 10)
       const detailsMap = {}
@@ -122,7 +134,7 @@ export default {
     async function fetchActionsAndCardDetails() {
       try {
         // Fetch actions (card creation events)
-        const actionsUrl = `https://api.trello.com/1/members/${member}/actions?filter=createCard&key=${API_KEY}&token=${TOKEN}`
+        const actionsUrl = `https://api.trello.com/1/members/${member}/actions?filter=createCard,copyCard&key=${API_KEY}&token=${TOKEN}`
         const response = await fetch(actionsUrl)
         if (!response.ok) {
           throw new Error('Error fetching actions')
@@ -145,6 +157,18 @@ export default {
       }
     }
 
+    // Computed property: sort actions by dateLastActivity (most recent first).
+    const sortedActions = computed(() => {
+      return actions.value.slice().sort((a, b) => {
+        const cardA = cardDetailsMap.value[a.data.card.id]
+        const cardB = cardDetailsMap.value[b.data.card.id]
+        if (cardA && cardB && cardA.dateLastActivity && cardB.dateLastActivity) {
+          return new Date(cardB.dateLastActivity) - new Date(cardA.dateLastActivity)
+        }
+        return 0
+      })
+    })
+
     // Format date strings.
     const formatDate = dateString => {
       const date = new Date(dateString)
@@ -156,10 +180,6 @@ export default {
       expanded.value[index] = !expanded.value[index]
     }
 
-    onMounted(() => {
-      fetchActionsAndCardDetails()
-    })
-
     // Determine the CSS class based on card closed status.
     const getCardClass = cardId => {
       const card = cardDetailsMap.value[cardId]
@@ -169,8 +189,13 @@ export default {
       return ''
     }
 
+    onMounted(() => {
+      fetchActionsAndCardDetails()
+    })
+
     return {
       actions,
+      sortedActions,
       loading,
       error,
       expanded,
@@ -210,6 +235,7 @@ export default {
   min-height: 200px;
 }
 
+/* Background color based on closed status */
 .closed-card {
   background-color: lightgreen !important;
 }
@@ -217,5 +243,4 @@ export default {
 .open-card {
   background-color: lightcoral !important;
 }
-
 </style>
