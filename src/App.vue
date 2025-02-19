@@ -1,7 +1,7 @@
 <template>
   <v-app>
     <v-container>
-      
+
       <v-row>
         <!--Member filtering-->
         <v-col cols="12" md="5" offset-md="3">
@@ -13,12 +13,7 @@
       <!-- Cards filtering based on title and description -->
       <v-row>
         <v-col cols="12" md="5" offset-md="3">
-          <v-text-field
-            v-model="searchQuery"
-            label="Search"
-            outlined
-            dense
-          ></v-text-field>
+          <v-text-field v-model="searchQuery" label="Search" outlined dense></v-text-field>
         </v-col>
       </v-row>
 
@@ -30,10 +25,7 @@
             {{ error }}
           </v-alert>
           <v-row v-if="filteredActions.length" dense>
-            <v-col 
-              v-for="(action, index) in filteredActions" 
-              :key="index" 
-              cols="12" md="6">
+            <v-col v-for="(action, index) in filteredActions" :key="index" cols="12" md="6">
               <v-card outlined class="equal-cards card-title-wrap" :class="getCardStatus(action.data.card.id)">
                 <v-card-title class="card-title-wrap">
                   <div v-if="cardDetailsMap[action.data.card.id]">
@@ -157,32 +149,57 @@ export default {
       return detailsMap
     }
 
-    // Fetch actions and then fetch card details.
     async function fetchActionsAndCardDetails() {
       try {
-        // Fetch actions (card creation events)
-        const actionsUrl = `https://api.trello.com/1/members/${selectedMember.value.username}/actions?filter=createCard,copyCard&key=${API_KEY}&token=${TOKEN}`
-        const response = await fetch(actionsUrl)
-        if (!response.ok) {
-          throw new Error('Error fetching actions')
+        loading.value = true;
+        // Clear any previous data.
+        actions.value = [];
+        cardDetailsMap.value = {};
+
+        const limit = 100; // number of actions per batch
+        let hasMore = true;
+        let before = undefined;
+
+        // Loop to fetch batches until there are no more.
+        while (hasMore) {
+          let url = `https://api.trello.com/1/members/${selectedMember.value.username}/actions?filter=createCard,copyCard&limit=${limit}&key=${API_KEY}&token=${TOKEN}`;
+          if (before) {
+            url += `&before=${before}`;
+          }
+          console.log("Fetching batch from:", url);
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error('Error fetching actions');
+          }
+          const batch = await response.json();
+
+          // Append this batch to the overall actions
+          actions.value = actions.value.concat(batch);
+          // Update the "expanded" array so each new action starts collapsed.
+          expanded.value = Array(actions.value.length).fill(false);
+
+          // Extract the card IDs for this batch.
+          const batchCardIds = [...new Set(batch.map(action => action.data.card.id))];
+          // Fetch card details for the current batch.
+          const batchDetails = await fetchCardDetails(batchCardIds);
+          // Merge the newly fetched details with the existing details.
+          cardDetailsMap.value = { ...cardDetailsMap.value, ...batchDetails };
+
+          // Check if this was the last batch.
+          if (batch.length < limit) {
+            hasMore = false;
+          } else {
+            // Use the ID of the last action as the pointer for the next batch.
+            before = batch[batch.length - 1].id;
+          }
         }
-        const actionsData = await response.json()
-        actions.value = actionsData
-
-        expanded.value = Array(actionsData.length).fill(false)
-
-        const cardIds = [
-          ...new Set(actionsData.map(action => action.data.card.id))
-        ]
-
-        // Batch-fetch card details.
-        cardDetailsMap.value = await fetchCardDetails(cardIds)
       } catch (err) {
-        error.value = err.message || 'Unknown error'
+        error.value = err.message || 'Unknown error';
       } finally {
-        loading.value = false
+        loading.value = false;
       }
     }
+
 
     // Computed property: sort actions by dateLastActivity
     const sortedActions = computed(() => {
@@ -202,9 +219,12 @@ export default {
       return date.toLocaleString()
     }
 
-    // Toggle the expanded state for a given card.
     const toggle = index => {
-      expanded.value[index] = !expanded.value[index]
+      if (!expanded.value[index]) {
+        expanded.value = expanded.value.map((_, i) => i === index ? true : false);
+      } else {
+        expanded.value[index] = false;
+      }
     }
 
     // Determine the CSS class based on card closed status.
@@ -245,7 +265,7 @@ export default {
       }, 300);
     }
 
-    
+
 
     onMounted(() => {
       fetchMembers()
