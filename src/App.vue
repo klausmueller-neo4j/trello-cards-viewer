@@ -1,22 +1,22 @@
 <template>
   <v-app>
     <v-container>
-
-      <v-row>
-        <!--Member filtering-->
-        <v-col cols="12" md="5" offset-md="3">
-          <v-select v-model="selectedMember" :items="members" item-title="fullName" return-object label="Select Member"
-            @update:modelValue="onMemberChange" outlined dense>
-          </v-select>
-        </v-col>
-      </v-row>
-      <!-- Cards filtering based on title and description -->
-      <v-row>
-        <v-col cols="12" md="5" offset-md="3">
-          <v-text-field v-model="searchQuery" label="Search" outlined dense></v-text-field>
-        </v-col>
-      </v-row>
-
+      <div class="filter-container">
+        <v-row>
+          <!--Member filtering-->
+          <v-col cols="12" md="5" offset-md="3">
+            <v-select v-model="selectedMember" :items="members" item-title="fullName" return-object
+              label="Select Member" @update:modelValue="onMemberChange" outlined dense>
+            </v-select>
+          </v-col>
+        </v-row>
+        <!-- Cards filtering based on title and description -->
+        <v-row>
+          <v-col cols="12" md="5" offset-md="3">
+            <v-text-field v-model="searchQuery" label="Search" outlined dense></v-text-field>
+          </v-col>
+        </v-row>
+      </div>
       <v-card class="pa-2" outlined>
         <v-card-title class="title-large">Trello Card Tracking</v-card-title>
         <v-card-text>
@@ -166,7 +166,6 @@ export default {
           if (before) {
             url += `&before=${before}`;
           }
-          console.log("Fetching batch from:", url);
           const response = await fetch(url);
           if (!response.ok) {
             throw new Error('Error fetching actions');
@@ -333,4 +332,11 @@ export default {
   text-align: center !important;
   padding: 0.5rem 0 !important;
 }
+
+.filter-container {
+  min-width: 1000px;
+  flex-shrink: 0;
+  margin-bottom: 1rem;
+}
+
 </style>
