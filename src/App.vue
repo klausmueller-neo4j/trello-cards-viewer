@@ -168,6 +168,9 @@ export default {
           }
           const response = await fetch(url);
           if (!response.ok) {
+            if(response.status==429) {
+              throw new Error('Too many requests, try again later!');  
+            }
             throw new Error('Error fetching actions');
           }
           const batch = await response.json();
@@ -256,12 +259,14 @@ export default {
 
     let fetchTimeout = null;
     function onMemberChange() {
+      console.log("call onMemberChange, new member:" + selectedMember.value.username)
       if (fetchTimeout) {
         clearTimeout(fetchTimeout);
       }
       fetchTimeout = setTimeout(() => {
+        console.log("call fetchActionsAndCardDetails with member:" + selectedMember.value.username)
         fetchActionsAndCardDetails();
-      }, 300);
+      }, 1000);
     }
 
 
