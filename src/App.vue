@@ -152,11 +152,11 @@ export default {
     async function fetchActionsAndCardDetails() {
       try {
         loading.value = true;
-        // Clear any previous data.
         actions.value = [];
         cardDetailsMap.value = {};
 
-        const limit = 100; // number of actions per batch
+        const limit = 300;
+        
         let hasMore = true;
         let before = undefined;
 
